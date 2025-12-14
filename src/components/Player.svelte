@@ -1,8 +1,8 @@
 <script lang="ts">
-  const browser = typeof window !== 'undefined';
   import { untrack } from "svelte";
   import MusicList from "../components/MusicList.svelte";
   import CoverArt from "./CoverArt.svelte";
+  import ProgressBar from "./ProgressBar.svelte";
 
   let player = $state<HTMLAudioElement | null>(null);
   let music = $state<string[]>([]);
@@ -10,40 +10,39 @@
   let currentTime = $state(0);
   let duration = $state(0);
   let isPlaying = $state(false);
-  
+
   let song = $derived(src ? `/music/${src}` : "");
-  let time = $derived(duration > 0 ? (currentTime / duration) * 100 : 0);
 
   $effect(() => {
-    if (browser && song) {
+    if (song) {
       untrack(() => player?.pause());
-      
+
       const newPlayer = new Audio(song);
-      
+
       newPlayer.onloadedmetadata = () => {
         untrack(() => {
           duration = newPlayer.duration || 0;
         });
       };
-      
+
       newPlayer.ontimeupdate = () => {
         untrack(() => {
           currentTime = newPlayer.currentTime || 0;
         });
       };
-      
+
       newPlayer.onplay = () => {
         untrack(() => {
           isPlaying = true;
         });
       };
-      
+
       newPlayer.onpause = () => {
         untrack(() => {
           isPlaying = false;
         });
       };
-      
+
       untrack(() => {
         player = newPlayer;
         isPlaying = false;
@@ -52,11 +51,9 @@
   });
 
   $effect.root(() => {
-    if (browser) {
-      fetch("http://localhost:3000/music/!")
-        .then(res => res.json())
-        .then(data => music = data);
-    }
+    fetch("/music/!")
+      .then((res) => res.json())
+      .then((data) => (music = data));
     return () => {};
   });
 
@@ -68,7 +65,7 @@
     if (!seconds || isNaN(seconds)) return "0:00";
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   }
 
   function seek(event: MouseEvent | KeyboardEvent): void {
@@ -104,46 +101,17 @@
 <div class="min-h-screen bg-gray-100 flex flex-col items-center justify-center">
   <div class="max-w-xl bg-white rounded-lg shadow-lg overflow-hidden">
     <CoverArt song={src} />
-    <div>
-      <div 
-        class="relative h-1 bg-gray-200 cursor-pointer"
-        role="slider"
-        tabindex="0"
-        aria-label="Seek slider"
-        aria-valuenow={time}
-        aria-valuemin="0"
-        aria-valuemax="100"
-        onclick={seek}
-        onkeydown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            seek(e);
-          }
-        }}
-        onmousedown={(e) => {
-          const handleMove = (moveEvent: MouseEvent) => seek(moveEvent);
-          const handleUp = () => {
-            window.removeEventListener('mousemove', handleMove);
-            window.removeEventListener('mouseup', handleUp);
-          };
-          window.addEventListener('mousemove', handleMove);
-          window.addEventListener('mouseup', handleUp);
-          seek(e);
-        }}
-      >
-        <div
-          class="absolute h-full bg-green-500 flex items-center justify-end pointer-events-none"
-          style="width: {time}%;"
-        >
-          <div class="rounded-full w-3 h-3 bg-white shadow"></div>
-        </div>
-      </div>
-    </div>
+    <ProgressBar currentTime={currentTime} duration={duration} onSeek={seek} />
     <div
       class="flex justify-between text-xs font-semibold text-gray-500 px-4 py-2"
     >
       <div>{formatTime(currentTime)}</div>
       <div class="flex space-x-3 p-2">
-        <button class="focus:outline-none" aria-label="Previous track" onclick={previousTrack}>
+        <button
+          class="focus:outline-none"
+          aria-label="Previous track"
+          onclick={previousTrack}
+        >
           <svg
             class="w-4 h-4"
             viewBox="0 0 24 24"
@@ -190,7 +158,11 @@
             >
           {/if}
         </button>
-        <button class="focus:outline-none" aria-label="Next track" onclick={nextTrack}>
+        <button
+          class="focus:outline-none"
+          aria-label="Next track"
+          onclick={nextTrack}
+        >
           <svg
             class="w-4 h-4"
             viewBox="0 0 24 24"
