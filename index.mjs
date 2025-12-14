@@ -5,8 +5,6 @@ const port = 3000
 import { readdirSync, createReadStream, statSync } from 'fs'
 import { pipeline } from "stream";
 import { join } from 'path'
-import { fileURLToPath } from 'url'
-import path from 'path'
 import NodeID3 from "node-id3"
 
 app.use(cors());
@@ -27,17 +25,23 @@ app.get('/music/:file', (req, res) => {
 
   if (range) {
     /** Extracting Start and End value from Range Header */
-    let [start, end] = range.replace(/bytes=/, "").split("-");
-    start = parseInt(start, 10);
-    end = end ? parseInt(end, 10) : size - 1;
+    const [startStr, endStr] = range.replace(/bytes=/, "").split("-");
+    let start = Number.parseInt(startStr, 10);
+    let end = endStr ? Number.parseInt(endStr, 10) : size - 1;
 
-    if (!isNaN(start) && isNaN(end)) {
-      start = start;
+    if (!Number.isNaN(start) && Number.isNaN(end)) {
       end = size - 1;
-    }
-    if (isNaN(start) && !isNaN(end)) {
+    } else if (Number.isNaN(start) && !Number.isNaN(end)) {
       start = size - end;
       end = size - 1;
+    }
+
+    // Reject malformed ranges that could not be parsed
+    if (Number.isNaN(start) || Number.isNaN(end)) {
+      res.writeHead(416, {
+        "Content-Range": `bytes */${size}`
+      });
+      return res.end();
     }
 
     // Handle unavailable range request
@@ -50,14 +54,15 @@ app.get('/music/:file', (req, res) => {
     }
 
     /** Sending Partial Content With HTTP Code 206 */
+    const chunkSize = end - start + 1;
     res.writeHead(206, {
       "Content-Range": `bytes ${start}-${end}/${size}`,
       "Accept-Ranges": "bytes",
-      "Content-Length": end - start + 1,
+      "Content-Length": chunkSize,
       "Content-Type": "audio/mp3"
     });
 
-    let readable = createReadStream(file, { start: start, end: end });
+    let readable = createReadStream(file, { start, end });
     pipeline(readable, res, err => {
       if (err) console.log(err);
     });
@@ -77,15 +82,16 @@ app.get("/music/cover/:file", (req, res) => {
   const fileParam = req.params.file;
   const file = join("music", fileParam);
   const tags = NodeID3.read(file)
-  if (!tags.image) {
+  const image = typeof tags.image === 'string' ? null : tags.image;
+  if (!image || !image.imageBuffer) {
     res.sendStatus(404);
     return;
   }
   res.writeHead(200, {
-    'Content-Type': tags.image.mime,
-    'Content-Length': tags.image.imageBuffer.length
+    'Content-Type': image.mime,
+    'Content-Length': image.imageBuffer.length
   })
-  res.end(tags.image.imageBuffer);
+  res.end(image.imageBuffer);
 })
 
 app.get("/music/info/:file", (req, res) => {
@@ -99,9 +105,7 @@ app.get("/music/info/:file", (req, res) => {
 app.use(express.static(join('.', 'public')))
 
 // In production, serve built frontend from dist and SPA fallback
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const distDir = join(__dirname, 'dist')
+const distDir = join(process.cwd(), 'dist')
 
 app.use(express.static(distDir))
 
