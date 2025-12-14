@@ -1,89 +1,149 @@
-<script>
-  import { onMount } from "svelte";
+<script lang="ts">
+  const browser = typeof window !== 'undefined';
+  import { untrack } from "svelte";
   import MusicList from "../components/MusicList.svelte";
   import CoverArt from "./CoverArt.svelte";
 
-  let player;
-  let song;
-  let music = [];
-  let src;
-  let time = 50;
+  let player = $state<HTMLAudioElement | null>(null);
+  let music = $state<string[]>([]);
+  let src = $state<string | undefined>();
+  let currentTime = $state(0);
+  let duration = $state(0);
+  let isPlaying = $state(false);
+  
+  let song = $derived(src ? `/music/${src}` : "");
+  let time = $derived(duration > 0 ? (currentTime / duration) * 100 : 0);
 
-  $: {
-    song = "http://localhost:3000/music/" + src;
-    player = new Audio(song);
-    player.onloadedmetadata = () => {
-      console.log(player.duration);
-   
-      // totalTrackTime = song.duration;
-      // updateTime();
-    };
-  }
-
-  // afterUpdate(() => {
-  //   player.load();
-  //   player.play();
-  // });
-
-  onMount(async () => {
-    const res = await fetch("http://localhost:3000/music/!");
-    music = await res.json();
+  $effect(() => {
+    if (browser && song) {
+      untrack(() => player?.pause());
+      
+      const newPlayer = new Audio(song);
+      
+      newPlayer.onloadedmetadata = () => {
+        untrack(() => {
+          duration = newPlayer.duration || 0;
+        });
+      };
+      
+      newPlayer.ontimeupdate = () => {
+        untrack(() => {
+          currentTime = newPlayer.currentTime || 0;
+        });
+      };
+      
+      newPlayer.onplay = () => {
+        untrack(() => {
+          isPlaying = true;
+        });
+      };
+      
+      newPlayer.onpause = () => {
+        untrack(() => {
+          isPlaying = false;
+        });
+      };
+      
+      untrack(() => {
+        player = newPlayer;
+        isPlaying = false;
+      });
+    }
   });
 
-  function play({ detail: { song } }) {
+  $effect.root(() => {
+    if (browser) {
+      fetch("http://localhost:3000/music/!")
+        .then(res => res.json())
+        .then(data => music = data);
+    }
+    return () => {};
+  });
+
+  function play({ detail: { song } }: { detail: { song: string } }) {
     src = song;
+  }
+
+  function formatTime(seconds: number): string {
+    if (!seconds || isNaN(seconds)) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  function seek(event: MouseEvent | KeyboardEvent): void {
+    if (!player || !duration) return;
+    const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    let x: number;
+    if (event instanceof MouseEvent) {
+      x = event.clientX - bounds.left;
+    } else {
+      // For keyboard events, seek to middle or use arrow keys
+      x = bounds.width / 2;
+    }
+    const percent = x / bounds.width;
+    player.currentTime = percent * duration;
+  }
+
+  function nextTrack(): void {
+    if (!src || music.length === 0) return;
+    const currentIndex = music.indexOf(src);
+    const nextIndex = (currentIndex + 1) % music.length;
+    src = music[nextIndex];
+  }
+
+  function previousTrack(): void {
+    if (!src || music.length === 0) return;
+    const currentIndex = music.indexOf(src);
+    const prevIndex = currentIndex <= 0 ? music.length - 1 : currentIndex - 1;
+    src = music[prevIndex];
   }
 </script>
 
-<!-- <div>
-  <audio bind:this={player} controls class="hidden">
-    <source type="audio/mpeg" id="source" src={song} />
-  </audio>
-</div> -->
 <!-- component -->
 <div class="min-h-screen bg-gray-100 flex flex-col items-center justify-center">
-  <!-- <div class="relative max-w-xl w-full h-36 bg-white rounded-lg shadow-lg overflow-hidde mb-32">
-      <div class="absolute inset-0 rounded-lg overflow-hidden bg-red-200">
-        <img src="https://images.unsplash.com/photo-1543794327-59a91fb815d1?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=800&h=200&q=80" alt="">
-        <div class="absolute inset-0 backdrop backdrop-blur-10 bg-gradient-to-b from-transparent to-black">
-          
-        </div>
-      </div>
-      <div class="absolute flex space-x-6 transform translate-x-6 translate-y-8">
-        <div class="w-36 h-36 rounded-lg shadow-lg overflow-hidden">
-          <img src="https://images.unsplash.com/photo-1543794327-59a91fb815d1?ixid=MXwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHw%3D&ixlib=rb-1.2.1&auto=format&fit=crop&w=200&h=200&q=80" alt="">
-        </div>
-        <div class="text-white pt-12">
-          <h3 class="font-bold">Album</h3>
-          <div class="text-sm opacity-60">Super Interpret</div>
-          <div class="mt-8 text-gray-400">
-            <div class="flex items-center space-x-2 text-xs">
-              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
-              <span>Easy listening</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div> -->
-
   <div class="max-w-xl bg-white rounded-lg shadow-lg overflow-hidden">
     <CoverArt song={src} />
     <div>
-      <div class="relative h-1 bg-gray-200">
+      <div 
+        class="relative h-1 bg-gray-200 cursor-pointer"
+        role="slider"
+        tabindex="0"
+        aria-label="Seek slider"
+        aria-valuenow={time}
+        aria-valuemin="0"
+        aria-valuemax="100"
+        onclick={seek}
+        onkeydown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            seek(e);
+          }
+        }}
+        onmousedown={(e) => {
+          const handleMove = (moveEvent: MouseEvent) => seek(moveEvent);
+          const handleUp = () => {
+            window.removeEventListener('mousemove', handleMove);
+            window.removeEventListener('mouseup', handleUp);
+          };
+          window.addEventListener('mousemove', handleMove);
+          window.addEventListener('mouseup', handleUp);
+          seek(e);
+        }}
+      >
         <div
-          class="absolute h-full bg-green-500 flex items-center justify-end"
+          class="absolute h-full bg-green-500 flex items-center justify-end pointer-events-none"
           style="width: {time}%;"
         >
-          <div class="rounded-full w-3 h-3 bg-white shadow" />
+          <div class="rounded-full w-3 h-3 bg-white shadow"></div>
         </div>
       </div>
     </div>
     <div
       class="flex justify-between text-xs font-semibold text-gray-500 px-4 py-2"
     >
-      <div>1:50</div>
+      <div>{formatTime(currentTime)}</div>
       <div class="flex space-x-3 p-2">
-        <button class="focus:outline-none">
+        <button class="focus:outline-none" aria-label="Previous track" onclick={previousTrack}>
           <svg
             class="w-4 h-4"
             viewBox="0 0 24 24"
@@ -101,10 +161,10 @@
           >
         </button>
         <button
-          on:click={() => (player.paused ? player.play() : player.pause())}
+          onclick={() => player && (isPlaying ? player.pause() : player.play())}
           class="rounded-full w-8 h-8 flex items-center justify-center pl-0.5 ring-2 ring-gray-100 focus:outline-none"
         >
-          {#if player.paused}
+          {#if !isPlaying}
             <svg
               class="w-5 h-5"
               viewBox="0 0 24 24"
@@ -130,7 +190,7 @@
             >
           {/if}
         </button>
-        <button class="focus:outline-none">
+        <button class="focus:outline-none" aria-label="Next track" onclick={nextTrack}>
           <svg
             class="w-4 h-4"
             viewBox="0 0 24 24"
@@ -148,8 +208,8 @@
           >
         </button>
       </div>
-      <div>3:00</div>
+      <div>{formatTime(duration)}</div>
     </div>
-    <MusicList {music} on:play={play} />
+    <MusicList {music} onplay={play} />
   </div>
 </div>

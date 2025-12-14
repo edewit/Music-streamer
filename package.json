@@ -7,9 +7,10 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
-    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json --watch",
-    "lint": "eslint ."
+    "check": "svelte-check --tsconfig ./jsconfig.json",
+    "check:watch": "svelte-check --tsconfig ./jsconfig.json --watch",
+    "lint": "eslint .",
+    "dev:all": "concurrently -n frontend,backend -c green,blue \"vite dev\" \"node index.mjs\""
   },
   "author": "me",
   "license": "ISC",
@@ -21,17 +22,16 @@
     "node-id3": "^0.2.3"
   },
   "devDependencies": {
-    "@sveltejs/adapter-auto": "next",
-    "@sveltejs/kit": "next",
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
     "autoprefixer": "^10.4.8",
     "eslint": "^8.16.0",
-    "eslint-plugin-svelte3": "^4.0.0",
+    "eslint-plugin-svelte": "^2.35.1",
+    "concurrently": "^8.2.2",
     "postcss": "^8.4.16",
-    "svelte": "^3.44.0",
-    "svelte-check": "^2.7.1",
-    "svelte-preprocess": "^4.10.7",
+    "svelte": "^5.0.0",
+    "svelte-check": "^4.0.0",
     "tailwindcss": "^3.1.8",
-    "vite": "^3.1.0"
+    "vite": "^5.0.0"
   },
   "type": "module"
 }

@@ -5,6 +5,8 @@ const port = 3000
 import { readdirSync, createReadStream, statSync } from 'fs'
 import { pipeline } from "stream";
 import { join } from 'path'
+import { fileURLToPath } from 'url'
+import path from 'path'
 import NodeID3 from "node-id3"
 
 app.use(cors());
@@ -90,13 +92,30 @@ app.get("/music/info/:file", (req, res) => {
   const fileParam = req.params.file;
   const file = join("music", fileParam);
   const tags = NodeID3.read(file)
-  console.log(tags)
   res.send({ artist: tags.artist, title: tags.title });
 })
 
+// Static assets
 app.use(express.static(join('.', 'public')))
 
+// In production, serve built frontend from dist and SPA fallback
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const distDir = join(__dirname, 'dist')
+
+app.use(express.static(distDir))
+
+app.get('*', (req, res, next) => {
+  // Skip API routes
+  if (req.path.startsWith('/music')) return next()
+  try {
+    res.sendFile(join(distDir, 'index.html'))
+  } catch (e) {
+    next()
+  }
+})
+
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
+  console.log(`FakeTube listening on port ${port}`)
 })
 

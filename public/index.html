@@ -28,34 +28,6 @@
         }
         function play(song) {
             currentsong = song
-            const source = document.getElementById("source")
-            source.setAttribute("src", "/music/" + song)
-            audio.load()
-            audio.play()
-        }
-        function playnext() {
-            const songindex = songs.findIndex((song) => song === currentsong)
-            play(songs[songindex + 1 >= songs.length ? 0 : songindex + 1])
-        }
-        audio.addEventListener("ended", playnext)
-
-        fetch('/!')
-            .then((response) => response.json())
-            .then((data) => {
-                songs = data
-                const table = document.getElementById("list")
-                data.forEach((song) => {
-                    const row = document.createElement("tr")
-                    table.appendChild(row)
-                    const cell = document.createElement("td")
-                    cell.setAttribute("onclick", `play("${song}");cover("${song}")`)
-                    const text = document.createTextNode(song);
-                    row.appendChild(cell)
-                    cell.appendChild(text)
-                });
-
-            })
-    </script>
-</body>
-
-</html>
+            <script type="module" src="/src/main.ts"></script>
+        </body>
+    </html>

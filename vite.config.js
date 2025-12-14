@@ -1,15 +1,16 @@
-import { sveltekit } from '@sveltejs/kit/vite';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 
 /** @type {import('vite').UserConfig} */
 const config = {
-	plugins: [sveltekit()],
-	proxy: {
-		'/music': {
-			target: 'http://localhost:3000',
-			changeOrigin: true,
-			secure: false,
-			rewrite: (path) => console.log("hello", path)
-		},
+	plugins: [svelte()],
+	server: {
+		proxy: {
+			'/music': {
+				target: 'http://localhost:3000',
+				changeOrigin: true,
+				secure: false
+			}
+		}
 	}
 };
 

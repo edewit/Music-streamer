@@ -1,18 +1,14 @@
 <script>
-    import { createEventDispatcher } from "svelte";
-    const dispatch = createEventDispatcher();
-    export let music;
+    let { music, onplay } = $props();
 
     function play(song) {
-        dispatch("play", {
-            song,
-        });
+        onplay?.({ detail: { song } });
     }
 </script>
 
 <ul class="text-xs sm:text-base divide-y border-t cursor-default">
     {#each music as song}
-    <li class="flex items-center space-x-3 hover:bg-gray-100" on:click={play(song)}>
+    <li class="flex items-center space-x-3 hover:bg-gray-100" onclick={() => play(song)}>
       <button class="p-3 hover:bg-green-500 group focus:outline-none">
         <svg
           class="w-4 h-4 group-hover:text-white"
